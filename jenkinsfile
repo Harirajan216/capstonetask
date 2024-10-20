@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the code from the repository
+                git branch: 'dev', url: 'https://github.com/Harirajan216/capstonetask.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                // Make the build script executable and run it
+                sh 'chmod +x build/build.sh'
+                sh 'build/build.sh'  // This script builds the Docker image
+            }
+        }
+        stage('Push to Docker Hub (Dev)') {
+            steps {
+                // Tag and push the Docker image to the public repository
+                script {
+                    def imageName = "harirajanrajendran/dev01:latest"
+                    sh "docker tag react-app ${imageName}"
+                    sh "docker push ${imageName}"
+                }
+            }
+        }
+        stage('Push to Docker Hub (Prod)') {
+            when {
+                // Only push to production when on the master branch
+                branch 'main'
+            }
+            steps {
+                // Tag and push the Docker image to the private repository
+                script {
+                    def imageName = "harirajanrajendran/prod01:latest"
+                    sh "docker tag react-app ${imageName}"
+                    sh "docker push ${imageName}"
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                // Execute the deployment script
+                sh 'chmod +x build/deploy.sh'
+                sh 'build/deploy.sh'  // This script deploys the application
+            }
+        }
+    }
+
+    triggers {
+        // Set to poll SCM or use webhooks for automatic builds
+        pollSCM('* * * * *') // Poll every minute; adjust as necessary
+    }
+}
